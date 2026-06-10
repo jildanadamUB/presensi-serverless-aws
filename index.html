@@ -104,7 +104,7 @@
         </thead>
         <tbody id="isiTabelHasil"></tbody>
     </table>
-    <br><button class="btn-danger" onclick="logout()">Keluar Aplikasi</button>
+    <br><button class="btn-danger" onclick="logout()">Logout</button>
 </div>
 
 <div class="container hidden" id="mahasiswaPage">
@@ -131,7 +131,7 @@
         <button onclick="isiAbsen()">Kirim Kehadiran</button>
     </div>
     <p id="mhsMessage" style="text-align:center; font-weight:bold;"></p>
-    <br><button class="btn-danger" onclick="logout()">Keluar Aplikasi</button>
+    <br><button class="btn-danger" onclick="logout()">Logout</button>
 </div>
 
 <script>
@@ -326,7 +326,7 @@
                 msg.innerText = data.message;
             } else {
                 msg.style.color = "green";
-                msg.innerText = "Presensi berhasil tercatat di sistem cloud!";
+                msg.innerText = "Presensi berhasil!";
             }
         } catch (error) { msg.innerText = "Gagal terhubung."; }
     }
