@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Kehadiran Mahasiswa</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .container { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2, h3 { text-align: center; }
+        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-danger:hover { background-color: #c82333; }
+        .btn-secondary { background-color: #6c757d; width: 30%; }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .tab-btn { flex: 1; background-color: #e9ecef; color: #333; border: 1px solid #ccc; }
+        .tab-btn.active { background-color: #007bff; color: white; border-color: #007bff; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="loginPage">
+    <h2>Login Sistem Presensi</h2>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button onclick="login()">Login</button>
+    <p id="loginMessage" style="color:red; text-align:center;"></p>
+</div>
+
+<div class="container hidden" id="dosenPage">
+    <h2>Dashboard Dosen</h2>
+    <p id="welcomeDosen">Selamat datang!</p>
+    <hr>
+    
+    <h3>Buka Sesi Kuliah</h3>
+    <input type="text" id="id_matkul_dosen" placeholder="ID Matakuliah (contoh: CCS-101)">
+    <input type="text" id="topik_dosen" placeholder="Topik Hari Ini">
+    
+    <div class="flex-row">
+        <button id="btnTabLangsung" class="tab-btn active" onclick="switchMode('langsung')">Mulai Sekarang</button>
+        <button id="btnTabJadwal" class="tab-btn" onclick="switchMode('jadwal')">Jadwalkan</button>
+    </div>
+
+    <div id="modeLangsung" style="margin-top: 15px;">
+        <p style="font-size: 14px; color: #666;">Sesi akan dimulai secara realtime saat tombol di bawah ditekan.</p>
+        <button id="btnAksiSesi" onclick="toggleSesiLangsung()">Mulai Sesi</button>
+    </div>
+
+    <div id="modeJadwal" class="hidden" style="margin-top: 15px;">
+        <label>Tanggal Presensi:</label>
+        <div class="flex-row">
+            <input type="date" id="tgl_jadwal">
+            <button class="btn-secondary" onclick="setHariIni()">Hari Ini</button>
+        </div>
+        
+        <div class="flex-row">
+            <div style="flex:1;">
+                <label>Waktu Mulai:</label>
+                <input type="time" id="waktu_mulai_jadwal">
+            </div>
+            <div style="flex:1;">
+                <label>Waktu Selesai:</label>
+                <input type="time" id="waktu_selesai_jadwal">
+            </div>
+        </div>
+        <button onclick="bukaKelasJadwal()">Jadwalkan Sesi</button>
+    </div>
+    
+    <p id="dosenMessage" style="color:green; font-weight:bold;"></p>
+
+    <hr>
+    <h3>Lihat Hasil Presensi</h3>
+    <input type="text" id="id_matkul_hasil" placeholder="Masukkan ID Matakuliah">
+    <button onclick="lihatHasil()">Lihat Hasil</button>
+    <table id="tabelHasil" class="hidden">
+        <thead><tr><th>Email Mahasiswa</th><th>Keterangan</th></tr></thead>
+        <tbody id="isiTabelHasil"></tbody>
+    </table>
+    <br><button class="btn-danger" onclick="logout()">Logout</button>
+</div>
+
+<div class="container hidden" id="mahasiswaPage">
+    <h2>Dashboard Mahasiswa</h2>
+    <p id="welcomeMhs">Selamat datang!</p>
+    
+    <h3>Isi Kehadiran</h3>
+    <input type="text" id="id_matkul_mhs" placeholder="ID Matakuliah (contoh: CCS-101)">
+    <select id="keterangan_mhs">
+        <option value="Hadir">Hadir</option>
+        <option value="Izin">Izin</option>
+        <option value="Sakit">Sakit</option>
+    </select>
+    <button onclick="isiAbsen()">Submit Presensi</button>
+    <p id="mhsMessage" style="color:green;"></p>
+    <br><button class="btn-danger" onclick="logout()">Logout</button>
+</div>
+
+<script>
+    const API_URL = "https://5oa6dvvnu1.execute-api.us-east-1.amazonaws.com/dev";
+    let userEmail = "";
+    let isSesiAktif = false; 
+
+    // Fungsi otomatis mengisi tanggal dan waktu saat ini (Realtime)
+    function setHariIni() {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        document.getElementById('tgl_jadwal').value = `${yyyy}-${mm}-${dd}`;
+        
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('waktu_mulai_jadwal').value = `${hh}:${min}`;
+        
+        const endHour = String((now.getHours() + 2) % 24).padStart(2, '0');
+        document.getElementById('waktu_selesai_jadwal').value = `${endHour}:${min}`;
+    }
+
+    setHariIni();
+
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const msg = document.getElementById('loginMessage');
+        msg.innerText = "Loading...";
+
+        try {
+            const response = await fetch(API_URL + "/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email, password: password })
+            });
+            const data = await response.json();
+
+            if (response.status === 200) {
+                userEmail = email;
+                document.getElementById('loginPage').classList.add('hidden');
+                
+                if (data.role === "dosen") {
+                    document.getElementById('dosenPage').classList.remove('hidden');
+                    document.getElementById('welcomeDosen').innerText = `Selamat datang, ${data.nama}!`;
+                } else {
+                    document.getElementById('mahasiswaPage').classList.remove('hidden');
+                    document.getElementById('welcomeMhs').innerText = `Selamat datang, ${data.nama}!`;
+                }
+            } else { msg.innerText = data.message; }
+        } catch (error) { msg.innerText = "Gagal terhubung ke server."; }
+    }
+
+    function switchMode(mode) {
+        if (mode === 'langsung') {
+            document.getElementById('modeLangsung').classList.remove('hidden');
+            document.getElementById('modeJadwal').classList.add('hidden');
+            document.getElementById('btnTabLangsung').classList.add('active');
+            document.getElementById('btnTabJadwal').classList.remove('active');
+        } else {
+            document.getElementById('modeLangsung').classList.add('hidden');
+            document.getElementById('modeJadwal').classList.remove('hidden');
+            document.getElementById('btnTabLangsung').classList.remove('active');
+            document.getElementById('btnTabJadwal').classList.add('active');
+        }
+    }
+
+    async function toggleSesiLangsung() {
+        const btn = document.getElementById('btnAksiSesi');
+        const id_matakuliah = document.getElementById('id_matkul_dosen').value;
+        const topik = document.getElementById('topik_dosen').value;
+        const msg = document.getElementById('dosenMessage');
+
+        if (!id_matakuliah || !topik) {
+            msg.style.color = "red";
+            msg.innerText = "ID Matakuliah dan Topik wajib diisi!";
+            return;
+        }
+
+        if (!isSesiAktif) {
+            msg.innerText = "Membuka sesi...";
+            try {
+                const response = await fetch(API_URL + "/bukakelas", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        id_matakuliah: id_matakuliah, 
+                        topik: topik, 
+                        tipe_sesi: 'langsung',
+                        waktu_mulai: new Date().toLocaleString()
+                    })
+                });
+                const data = await response.json();
+                msg.style.color = "green";
+                msg.innerText = data.message;
+                
+                isSesiAktif = true;
+                btn.innerText = "Akhiri Sesi";
+                btn.classList.add('btn-danger');
+            } catch (error) { msg.innerText = "Gagal membuka sesi."; }
+        } else {
+            if(confirm("Yakin ingin mengakhiri sesi ini?")) {
+                isSesiAktif = false;
+                btn.innerText = "Mulai Sesi";
+                btn.classList.remove('btn-danger');
+                msg.innerText = "Sesi telah diakhiri.";
+            }
+        }
+    }
+
+    async function bukaKelasJadwal() {
+        const id_matakuliah = document.getElementById('id_matkul_dosen').value;
+        const topik = document.getElementById('topik_dosen').value;
+        const tgl = document.getElementById('tgl_jadwal').value;
+        const w_mulai = document.getElementById('waktu_mulai_jadwal').value;
+        const w_selesai = document.getElementById('waktu_selesai_jadwal').value;
+        const msg = document.getElementById('dosenMessage');
+
+        if (w_selesai <= w_mulai) {
+            alert("Waktu selesai tidak boleh kurang dari atau sama dengan waktu mulai!");
+            return;
+        }
+
+        msg.style.color = "black";
+        msg.innerText = "Menjadwalkan...";
+        try {
+            const response = await fetch(API_URL + "/bukakelas", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    id_matakuliah: id_matakuliah, 
+                    topik: topik, 
+                    tipe_sesi: 'jadwal',
+                    tanggal: tgl,
+                    waktu_mulai: w_mulai,
+                    waktu_selesai: w_selesai
+                })
+            });
+            const data = await response.json();
+            msg.style.color = "green";
+            msg.innerText = data.message;
+        } catch (error) { msg.innerText = "Gagal menjadwalkan sesi."; }
+    }
+
+    async function isiAbsen() {
+        const id_matakuliah = document.getElementById('id_matkul_mhs').value;
+        const keterangan = document.getElementById('keterangan_mhs').value;
+        const msg = document.getElementById('mhsMessage');
+        msg.style.color = "black";
+        msg.innerText = "Mengirim...";
+
+        try {
+            const response = await fetch(API_URL + "/isiabsen", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id_matakuliah: id_matakuliah, email: userEmail, keterangan_presensi: keterangan })
+            });
+            const data = await response.json();
+            
+            if(response.status !== 200) {
+                msg.style.color = "red";
+                msg.innerText = data.message; 
+                alert(data.message);
+            } else {
+                msg.style.color = "green";
+                msg.innerText = "Presensi berhasil dikirim.";
+                alert(data.message); 
+            }
+        } catch (error) { msg.innerText = "Gagal mengirim presensi."; }
+    }
+
+    async function lihatHasil() {
+        const id_matakuliah = document.getElementById('id_matkul_hasil').value;
+        const tabel = document.getElementById('tabelHasil');
+        const isiTabel = document.getElementById('isiTabelHasil');
+        isiTabel.innerHTML = "<tr><td colspan='2'>Loading...</td></tr>";
+        tabel.classList.remove('hidden');
+
+        try {
+            const response = await fetch(API_URL + "/lihathasil", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id_matakuliah: id_matakuliah })
+            });
+            const data = await response.json();
+            
+            isiTabel.innerHTML = "";
+            if (data.data && data.data.length > 0) {
+                data.data.forEach(mhs => {
+                    isiTabel.innerHTML += `<tr><td>${mhs.email}</td><td>${mhs.keterangan_presensi}</td></tr>`;
+                });
+            } else {
+                isiTabel.innerHTML = "<tr><td colspan='2'>Belum ada data presensi.</td></tr>";
+            }
+        } catch (error) {
+            isiTabel.innerHTML = "<tr><td colspan='2'>Gagal mengambil data.</td></tr>";
+        }
+    }
+
+    function logout() { location.reload(); }
+</script>
+</body>
+</html>
