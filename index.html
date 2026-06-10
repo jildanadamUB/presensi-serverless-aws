@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Kehadiran Mahasiswa</title>
+    <title>Sistem Kehadiran Mahasiswa Serverless</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f9; }
         .container { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2, h3 { text-align: center; }
+        h2, h3 { text-align: center; color: #333; }
         input, select, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
         button:hover { background-color: #0056b3; }
@@ -16,119 +16,147 @@
         .btn-secondary { background-color: #6c757d; width: 30%; }
         .hidden { display: none; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f2f2f2; }
         .flex-row { display: flex; gap: 10px; align-items: center; }
         .tab-btn { flex: 1; background-color: #e9ecef; color: #333; border: 1px solid #ccc; }
         .tab-btn.active { background-color: #007bff; color: white; border-color: #007bff; }
+        .status-box { background: #e2e3e5; padding: 15px; border-radius: 6px; text-align: center; font-weight: bold; color: #383d41; margin: 15px 0; }
     </style>
 </head>
 <body>
 
 <div class="container" id="loginPage">
     <h2>Login Sistem Presensi</h2>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <button onclick="login()">Login</button>
-    <p id="loginMessage" style="color:red; text-align:center;"></p>
+    <input type="email" id="email" placeholder="Masukkan Email Kampus" required>
+    <input type="password" id="password" placeholder="Masukkan Password" required>
+    <button onclick="login()">Masuk</button>
+    <p id="loginMessage" style="color:red; text-align:center; font-weight:bold;"></p>
 </div>
 
 <div class="container hidden" id="dosenPage">
     <h2>Dashboard Dosen</h2>
-    <p id="welcomeDosen">Selamat datang!</p>
+    <p id="welcomeDosen" style="font-weight: bold; color: #0056b3;"></p>
     <hr>
     
     <h3>Buka Sesi Kuliah</h3>
-    <input type="text" id="id_matkul_dosen" placeholder="ID Matakuliah (contoh: CCS-101)">
-    <input type="text" id="topik_dosen" placeholder="Topik Hari Ini">
+    <label>Pilih Mata Kuliah:</label>
+    <select id="id_matkul_dosen">
+        <option value="Cloud Computing and Security">Cloud Computing and Security</option>
+        <option value="Embedded Artificial Intelligence">Embedded Artificial Intelligence</option>
+        <option value="Pattern Recognition">Pattern Recognition</option>
+        <option value="Cyber Physical System">Cyber Physical System</option>
+        <option value="Capstone Project">Capstone Project</option>
+    </select>
+    
+    <label>Topik Perkuliahan (Manual):</label>
+    <input type="text" id="topik_dosen" placeholder="Contoh: Pengenalan Serverless Architecture">
     
     <div class="flex-row">
         <button id="btnTabLangsung" class="tab-btn active" onclick="switchMode('langsung')">Mulai Sekarang</button>
-        <button id="btnTabJadwal" class="tab-btn" onclick="switchMode('jadwal')">Jadwalkan</button>
+        <button id="btnTabJadwal" class="tab-btn" onclick="switchMode('jadwal')">Jadwalkan Sesi</button>
     </div>
 
-    <div id="modeLangsung" style="margin-top: 15px;">
-        <p style="font-size: 14px; color: #666;">Sesi akan dimulai secara realtime saat tombol di bawah ditekan.</p>
+    <div id="modeLangsung" style="margin-top: 10px;">
         <button id="btnAksiSesi" onclick="toggleSesiLangsung()">Mulai Sesi</button>
     </div>
 
-    <div id="modeJadwal" class="hidden" style="margin-top: 15px;">
-        <label>Tanggal Presensi:</label>
+    <div id="modeJadwal" class="hidden" style="margin-top: 10px;">
+        <label>Tanggal Pelaksanaan:</label>
         <div class="flex-row">
             <input type="date" id="tgl_jadwal">
             <button class="btn-secondary" onclick="setHariIni()">Hari Ini</button>
         </div>
-        
         <div class="flex-row">
             <div style="flex:1;">
-                <label>Waktu Mulai:</label>
+                <label>Jam Mulai:</label>
                 <input type="time" id="waktu_mulai_jadwal">
             </div>
             <div style="flex:1;">
-                <label>Waktu Selesai:</label>
+                <label>Jam Selesai:</label>
                 <input type="time" id="waktu_selesai_jadwal">
             </div>
         </div>
-        <button onclick="bukaKelasJadwal()">Jadwalkan Sesi</button>
+        <button onclick="bukaKelasJadwal()">Simpan Jadwal Sesi</button>
     </div>
-    
-    <p id="dosenMessage" style="color:green; font-weight:bold;"></p>
+    <p id="dosenMessage" style="text-align:center; font-weight:bold; margin-top:10px;"></p>
 
-    <hr>
-    <h3>Lihat Hasil Presensi</h3>
-    <input type="text" id="id_matkul_hasil" placeholder="Masukkan ID Matakuliah">
-    <button onclick="lihatHasil()">Lihat Hasil</button>
+    <hr style="margin-top:25px;">
+    <h3>Lihat Hasil Rekap Presensi</h3>
+    <label>Pilih Mata Kuliah:</label>
+    <select id="id_matkul_hasil">
+        <option value="Cloud Computing and Security">Cloud Computing and Security</option>
+        <option value="Embedded Artificial Intelligence">Embedded Artificial Intelligence</option>
+        <option value="Pattern Recognition">Pattern Recognition</option>
+        <option value="Cyber Physical System">Cyber Physical System</option>
+        <option value="Capstone Project">Capstone Project</option>
+    </select>
+    <label>Masukkan Nama Topik yang Ingin Dilihat:</label>
+    <input type="text" id="topik_hasil" placeholder="Ketik nama topik secara spesifik">
+    <button onclick="lihatHasil()">Tampilkan Rekap</button>
+    
     <table id="tabelHasil" class="hidden">
-        <thead><tr><th>Email Mahasiswa</th><th>Keterangan</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Nama Mahasiswa</th>
+                <th>Status Kehadiran</th>
+            </tr>
+        </thead>
         <tbody id="isiTabelHasil"></tbody>
     </table>
-    <br><button class="btn-danger" onclick="logout()">Logout</button>
+    <br><button class="btn-danger" onclick="logout()">Keluar Aplikasi</button>
 </div>
 
 <div class="container hidden" id="mahasiswaPage">
     <h2>Dashboard Mahasiswa</h2>
-    <p id="welcomeMhs">Selamat datang!</p>
+    <p id="welcomeMhs" style="font-weight: bold; color: #28a745;"></p>
+    <hr>
     
-    <h3>Isi Kehadiran</h3>
-    <input type="text" id="id_matkul_mhs" placeholder="ID Matakuliah (contoh: CCS-101)">
-    <select id="keterangan_mhs">
-        <option value="Hadir">Hadir</option>
-        <option value="Izin">Izin</option>
-        <option value="Sakit">Sakit</option>
-    </select>
-    <button onclick="isiAbsen()">Submit Presensi</button>
-    <p id="mhsMessage" style="color:green;"></p>
-    <br><button class="btn-danger" onclick="logout()">Logout</button>
+    <div id="statusSesiKosong" class="status-box hidden">
+        Tidak ada sesi presensi yang sedang aktif sekarang.
+    </div>
+
+    <div id="formPresensiMhs" class="hidden">
+        <div style="background:#e8f4fd; padding:12px; border-radius:6px; margin-bottom:15px;">
+            <p><strong>Mata Kuliah:</strong> <span id="txtMatkulMhs"></span></p>
+            <p><strong>Topik Hari Ini:</strong> <span id="txtTopikMhs"></span></p>
+        </div>
+        
+        <label>Pilih Keterangan Kehadiran:</label>
+        <select id="keterangan_mhs">
+            <option value="Hadir">Hadir</option>
+            <option value="Izin">Izin</option>
+            <option value="Sakit">Sakit</option>
+        </select>
+        <button onclick="isiAbsen()">Kirim Kehadiran</button>
+    </div>
+    <p id="mhsMessage" style="text-align:center; font-weight:bold;"></p>
+    <br><button class="btn-danger" onclick="logout()">Keluar Aplikasi</button>
 </div>
 
 <script>
     const API_URL = "https://5oa6dvvnu1.execute-api.us-east-1.amazonaws.com/dev";
     let userEmail = "";
-    let isSesiAktif = false; 
+    let activeMatkul = "";
+    let activeTopik = "";
+    let isSesiAktif = false;
 
-    // Fungsi otomatis mengisi tanggal dan waktu saat ini (Realtime)
     function setHariIni() {
         const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        document.getElementById('tgl_jadwal').value = `${yyyy}-${mm}-${dd}`;
-        
+        document.getElementById('tgl_jadwal').value = now.toISOString().split('T')[0];
         const hh = String(now.getHours()).padStart(2, '0');
         const min = String(now.getMinutes()).padStart(2, '0');
         document.getElementById('waktu_mulai_jadwal').value = `${hh}:${min}`;
-        
         const endHour = String((now.getHours() + 2) % 24).padStart(2, '0');
         document.getElementById('waktu_selesai_jadwal').value = `${endHour}:${min}`;
     }
-
     setHariIni();
 
     async function login() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const msg = document.getElementById('loginMessage');
-        msg.innerText = "Loading...";
+        msg.innerText = "Memvalidasi...";
 
         try {
             const response = await fetch(API_URL + "/login", {
@@ -144,13 +172,14 @@
                 
                 if (data.role === "dosen") {
                     document.getElementById('dosenPage').classList.remove('hidden');
-                    document.getElementById('welcomeDosen').innerText = `Selamat datang, ${data.nama}!`;
+                    document.getElementById('welcomeDosen').innerText = `Selamat datang kembali, ${data.nama}!`;
                 } else {
                     document.getElementById('mahasiswaPage').classList.remove('hidden');
                     document.getElementById('welcomeMhs').innerText = `Selamat datang, ${data.nama}!`;
+                    cekSesiAktifMahasiswa(); // Otomatis periksa sesi aktif ketika mhs login
                 }
             } else { msg.innerText = data.message; }
-        } catch (error) { msg.innerText = "Gagal terhubung ke server."; }
+        } catch (error) { msg.innerText = "Koneksi ke server AWS terputus."; }
     }
 
     function switchMode(mode) {
@@ -169,49 +198,52 @@
 
     async function toggleSesiLangsung() {
         const btn = document.getElementById('btnAksiSesi');
-        const id_matakuliah = document.getElementById('id_matkul_dosen').value;
+        const matkul = document.getElementById('id_matkul_dosen').value;
         const topik = document.getElementById('topik_dosen').value;
         const msg = document.getElementById('dosenMessage');
 
-        if (!id_matakuliah || !topik) {
+        if (!topik) {
             msg.style.color = "red";
-            msg.innerText = "ID Matakuliah dan Topik wajib diisi!";
+            msg.innerText = "Error: Input judul topik perkuliahan wajib diisi!";
             return;
         }
 
         if (!isSesiAktif) {
-            msg.innerText = "Membuka sesi...";
+            msg.style.color = "black";
+            msg.innerText = "Membuka kelas...";
             try {
                 const response = await fetch(API_URL + "/bukakelas", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        id_matakuliah: id_matakuliah, 
-                        topik: topik, 
-                        tipe_sesi: 'langsung',
-                        waktu_mulai: new Date().toLocaleString()
-                    })
+                    body: JSON.stringify({ id_matakuliah: matkul, topik: topik, tipe_sesi: 'langsung', waktu_mulai: new Date().toLocaleString() })
                 });
                 const data = await response.json();
                 msg.style.color = "green";
                 msg.innerText = data.message;
-                
                 isSesiAktif = true;
-                btn.innerText = "Akhiri Sesi";
+                btn.innerText = "Akhiri Sesi Presensi";
                 btn.classList.add('btn-danger');
-            } catch (error) { msg.innerText = "Gagal membuka sesi."; }
+            } catch (error) { msg.innerText = "Gagal memproses ke AWS Lambda."; }
         } else {
-            if(confirm("Yakin ingin mengakhiri sesi ini?")) {
-                isSesiAktif = false;
-                btn.innerText = "Mulai Sesi";
-                btn.classList.remove('btn-danger');
-                msg.innerText = "Sesi telah diakhiri.";
+            if(confirm("Apakah Anda yakin ingin menutup sesi kelas ini?")) {
+                try {
+                    await fetch(API_URL + "/bukakelas", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id_matakuliah: matkul, aksi: 'akhiri' })
+                    });
+                    isSesiAktif = false;
+                    btn.innerText = "Mulai Sesi";
+                    btn.classList.remove('btn-danger');
+                    msg.style.color = "orange";
+                    msg.innerText = "Sesi kuliah berhasil ditutup.";
+                } catch (error) { msg.innerText = "Gagal menutup sesi."; }
             }
         }
     }
 
     async function bukaKelasJadwal() {
-        const id_matakuliah = document.getElementById('id_matkul_dosen').value;
+        const matkul = document.getElementById('id_matkul_dosen').value;
         const topik = document.getElementById('topik_dosen').value;
         const tgl = document.getElementById('tgl_jadwal').value;
         const w_mulai = document.getElementById('waktu_mulai_jadwal').value;
@@ -219,84 +251,97 @@
         const msg = document.getElementById('dosenMessage');
 
         if (w_selesai <= w_mulai) {
-            alert("Waktu selesai tidak boleh kurang dari atau sama dengan waktu mulai!");
+            alert("Aturan validasi: Jam selesai tidak boleh kurang dari jam awal perkuliahan!");
             return;
         }
+        if (!topik) { alert("Topik wajib diisi!"); return; }
 
         msg.style.color = "black";
-        msg.innerText = "Menjadwalkan...";
+        msg.innerText = "Menyimpan ke sistem...";
         try {
             const response = await fetch(API_URL + "/bukakelas", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    id_matakuliah: id_matakuliah, 
-                    topik: topik, 
-                    tipe_sesi: 'jadwal',
-                    tanggal: tgl,
-                    waktu_mulai: w_mulai,
-                    waktu_selesai: w_selesai
-                })
+                body: JSON.stringify({ id_matakuliah: matkul, topik: topik, tipe_sesi: 'jadwal', tanggal: tgl, waktu_mulai: w_mulai, waktu_selesai: w_selesai })
             });
             const data = await response.json();
             msg.style.color = "green";
             msg.innerText = data.message;
-        } catch (error) { msg.innerText = "Gagal menjadwalkan sesi."; }
+        } catch (error) { msg.innerText = "Gagal melakukan penjadwalan."; }
+    }
+
+    async function cekSesiAktifMahasiswa() {
+        try {
+            const response = await fetch(API_URL + "/sesiaktif", { method: "POST" });
+            const data = await response.json();
+
+            if (data.active) {
+                activeMatkul = data.id_matakuliah;
+                activeTopik = data.topik;
+                document.getElementById('txtMatkulMhs').innerText = data.id_matakuliah;
+                document.getElementById('txtTopikMhs').innerText = data.topik;
+                document.getElementById('formPresensiMhs').classList.remove('hidden');
+                document.getElementById('statusSesiKosong').classList.add('hidden');
+            } else {
+                document.getElementById('formPresensiMhs').classList.add('hidden');
+                document.getElementById('statusSesiKosong').classList.remove('hidden');
+            }
+        } catch (e) { console.log("Gagal memindai sesi aktif."); }
     }
 
     async function isiAbsen() {
-        const id_matakuliah = document.getElementById('id_matkul_mhs').value;
         const keterangan = document.getElementById('keterangan_mhs').value;
         const msg = document.getElementById('mhsMessage');
         msg.style.color = "black";
-        msg.innerText = "Mengirim...";
+        msg.innerText = "Mengirim data...";
 
         try {
             const response = await fetch(API_URL + "/isiabsen", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id_matakuliah: id_matakuliah, email: userEmail, keterangan_presensi: keterangan })
+                body: JSON.stringify({ id_matakuliah: activeMatkul, email: userEmail, keterangan_presensi: keterangan, topik: activeTopik })
             });
             const data = await response.json();
+            alert(data.message);
             
             if(response.status !== 200) {
                 msg.style.color = "red";
-                msg.innerText = data.message; 
-                alert(data.message);
+                msg.innerText = data.message;
             } else {
                 msg.style.color = "green";
-                msg.innerText = "Presensi berhasil dikirim.";
-                alert(data.message); 
+                msg.innerText = "Presensi berhasil tercatat di sistem cloud!";
             }
-        } catch (error) { msg.innerText = "Gagal mengirim presensi."; }
+        } catch (error) { msg.innerText = "Gagal terhubung."; }
     }
 
     async function lihatHasil() {
-        const id_matakuliah = document.getElementById('id_matkul_hasil').value;
+        const matkul = document.getElementById('id_matkul_hasil').value;
+        const topik = document.getElementById('topik_hasil').value;
         const tabel = document.getElementById('tabelHasil');
         const isiTabel = document.getElementById('isiTabelHasil');
-        isiTabel.innerHTML = "<tr><td colspan='2'>Loading...</td></tr>";
+
+        if(!topik) { alert("Ketik nama topik yang ingin Anda rekap!"); return; }
+
+        isiTabel.innerHTML = "<tr><td colspan='2'>Memproses sinkronisasi rekap...</td></tr>";
         tabel.classList.remove('hidden');
 
         try {
             const response = await fetch(API_URL + "/lihathasil", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id_matakuliah: id_matakuliah })
+                body: JSON.stringify({ id_matakuliah: matkul, topik: topik })
             });
             const data = await response.json();
             
             isiTabel.innerHTML = "";
             if (data.data && data.data.length > 0) {
                 data.data.forEach(mhs => {
-                    isiTabel.innerHTML += `<tr><td>${mhs.email}</td><td>${mhs.keterangan_presensi}</td></tr>`;
+                    isiTabel.innerHTML += `<tr><td>${mhs.nama}</td><td style="font-weight:bold; color:${mhs.keterangan_presensi === 'Tidak Hadir' ? 'red' : 'green'}">${mhs.keterangan_presensi}</td></tr>`;
                 });
             } else {
-                isiTabel.innerHTML = "<tr><td colspan='2'>Belum ada data presensi.</td></tr>";
+                isiTabel.innerHTML = "<tr><td colspan='2'>Belum ada mahasiswa terdaftar.</td></tr>";
             }
-        } catch (error) {
-            isiTabel.innerHTML = "<tr><td colspan='2'>Gagal mengambil data.</td></tr>";
-        }
+        } catch (error) { isiTabel.innerHTML = "<tr><td colspan='2'>Gagal memuat rekap.</td></tr>"; }
     }
 
     function logout() { location.reload(); }
