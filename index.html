@@ -226,18 +226,35 @@
             } catch (error) { msg.innerText = "Gagal memproses ke AWS Lambda."; }
         } else {
             if(confirm("Apakah Anda yakin ingin menutup sesi kelas ini?")) {
+                msg.style.color = "black";
+                msg.innerText = "Menutup sesi di server AWS...";
                 try {
-                    await fetch(API_URL + "/bukakelas", {
+                    // 1. Kirim data ke Lambda
+                    const response = await fetch(API_URL + "/bukakelas", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ id_matakuliah: matkul, aksi: 'akhiri' })
                     });
-                    isSesiAktif = false;
-                    btn.innerText = "Mulai Sesi";
-                    btn.classList.remove('btn-danger');
-                    msg.style.color = "orange";
-                    msg.innerText = "Sesi kuliah berhasil ditutup.";
-                } catch (error) { msg.innerText = "Gagal menutup sesi."; }
+                    
+                    // 2. Ambil data respons dari Lambda
+                    const data = await response.json();
+                    
+                    // 3. Validasi apakah AWS sukses memprosesnya (status 200)
+                    if (response.status === 200) {
+                        isSesiAktif = false;
+                        btn.innerText = "Mulai Sesi";
+                        btn.classList.remove('btn-danger');
+                        msg.style.color = "orange";
+                        msg.innerText = data.message; // Menampilkan "Sesi berhasil diakhiri!"
+                    } else {
+                        // Jika Lambda melempar error (status 500/400), tampilkan di sini
+                        msg.style.color = "red";
+                        msg.innerText = "Gagal dari AWS: " + data.message;
+                    }
+                } catch (error) { 
+                    msg.style.color = "red";
+                    msg.innerText = "Gagal menghubungi API Gateway."; 
+                }
             }
         }
     }
